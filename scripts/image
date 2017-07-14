@@ -244,14 +244,20 @@ fi
   fi
 
   echo "rm -rf $TARGET_IMG/$IMAGE_NAME.system" >> $FAKEROOT_SCRIPT
-  echo "$ROOT/$TOOLCHAIN/bin/mksquashfs $BUILD/image/system $TARGET_IMG/$IMAGE_NAME.system -noappend -comp $SQUASHFS_COMPRESSION" >> $FAKEROOT_SCRIPT
+  echo "dd if=/dev/zero of=$TARGET_IMG/$IMAGE_NAME.system bs=1M count=370" >> $FAKEROOT_SCRIPT
+  echo "mkfs.ext4 $TARGET_IMG/$IMAGE_NAME.system" >> $FAKEROOT_SCRIPT
+  echo "mkdir temp" >> $FAKEROOT_SCRIPT
+  echo "mount -o rw $TARGET_IMG/$IMAGE_NAME.system temp" >> $FAKEROOT_SCRIPT
+  echo "rsync -aHAX $BUILD/image/system/. temp" >> $FAKEROOT_SCRIPT
+  echo "umount temp" >> $FAKEROOT_SCRIPT
+  echo "rm -rf temp" >> $FAKEROOT_SCRIPT
 
 # run fakeroot
   $ROOT/$TOOLCHAIN/bin/fakeroot -- $FAKEROOT_SCRIPT
   rm -rf $FAKEROOT_SCRIPT
 
 # set permissions
-  chmod 0644 $TARGET_IMG/$IMAGE_NAME.system
+  chmod 0755 $TARGET_IMG/$IMAGE_NAME.system
 
   if [ "$1" = "release" -o "$1" = "mkimage" -o "$1" = "amlpkg" -o "$1" = "noobs" ]; then
 
