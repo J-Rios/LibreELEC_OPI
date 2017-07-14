@@ -16,41 +16,38 @@
 #  along with OpenELEC.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
-PKG_NAME="ccache"
-PKG_VERSION="3.2.3"
+PKG_NAME="rtl8188eu"
+PKG_VERSION="00b5f0d"
 PKG_REV="1"
 PKG_ARCH="any"
 PKG_LICENSE="GPL"
-PKG_SITE="https://ccache.samba.org/"
-PKG_URL="https://samba.org/ftp/ccache/$PKG_NAME-$PKG_VERSION.tar.bz2"
-PKG_DEPENDS_HOST="make:host"
+# realtek: PKG_SITE="http://www.realtek.com.tw/downloads/downloadsView.aspx?Langid=1&PFid=48&Level=5&Conn=4&ProdID=274&DownTypeID=3&GetDown=false&Downloads=true"
+PKG_SITE="https://github.com/lwfinger/rtl8188eu"
+PKG_URL="https://github.com/lwfinger/rtl8188eu/archive/$PKG_VERSION.tar.gz"
+PKG_DEPENDS_TARGET="toolchain linux"
+PKG_NEED_UNPACK="$LINUX_DEPENDS"
 PKG_PRIORITY="optional"
-PKG_SECTION="devel"
-PKG_SHORTDESC="ccache: A fast compiler cache"
-PKG_LONGDESC="Ccache is a compiler cache. It speeds up re-compilation of C/C++ code by caching previous compiles and detecting when the same compile is being done again."
+PKG_SECTION="driver"
+PKG_SHORTDESC="Realtek RTL81xxEU Linux 3.x driver"
+PKG_LONGDESC="Realtek RTL81xxEU Linux 3.x driver"
 
 PKG_IS_ADDON="no"
 PKG_AUTORECONF="no"
 
-export CC=$LOCAL_CC
-
-PKG_CONFIGURE_OPTS_HOST="--with-bundled-zlib"
-
-post_makeinstall_host() {
-# setup ccache
-  $ROOT/$TOOLCHAIN/bin/ccache --max-size=$CCACHE_CACHE_SIZE
-
-  cat > $HOST_CC <<EOF
-#!/bin/sh
-$ROOT/$TOOLCHAIN/bin/ccache $LOCAL_CC "\$@"
-EOF
-
-  chmod +x $HOST_CC
-
-  cat > $HOST_CXX <<EOF
-#!/bin/sh
-$ROOT/$TOOLCHAIN/bin/ccache $LOCAL_CXX "\$@"
-EOF
-
-  chmod +x $HOST_CXX
+pre_make_target() {
+  unset LDFLAGS
 }
+
+make_target() {
+  make V=1 \
+       ARCH=$TARGET_KERNEL_ARCH \
+       KSRC=$(kernel_path) \
+       CROSS_COMPILE=$TARGET_PREFIX \
+       CONFIG_POWER_SAVING=n
+}
+
+makeinstall_target() {
+  mkdir -p $INSTALL/lib/modules/$(get_module_dir)/$PKG_NAME
+  cp *.ko $INSTALL/lib/modules/$(get_module_dir)/$PKG_NAME
+}
+

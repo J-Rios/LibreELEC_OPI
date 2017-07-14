@@ -17,19 +17,17 @@
 ################################################################################
 
 PKG_NAME="u-boot"
-PKG_DEPENDS_TARGET="toolchain"
-if [ "$UBOOT_VERSION" = "imx6-cuboxi" ]; then
-  PKG_VERSION="imx6-408544d"
+if [ "$UBOOT_VERSION" = "default" ]; then
+  PKG_VERSION="2011.03-rc1"
+  PKG_SITE="http://www.denx.de/wiki/U-Boot/WebHome"
+  PKG_URL="ftp://ftp.denx.de/pub/u-boot/$PKG_NAME-$PKG_VERSION.tar.bz2"
+elif [ "$UBOOT_VERSION" = "imx6-cuboxi" ]; then
+  PKG_VERSION="10acd12"
   PKG_SITE="http://imx.solid-run.com/wiki/index.php?title=Building_the_kernel_and_u-boot_for_the_CuBox-i_and_the_HummingBoard"
-  # https://github.com/SolidRun/u-boot-imx6.git
-  PKG_URL="$DISTRO_SRC/$PKG_NAME-$PKG_VERSION.tar.xz"
-elif [ "$UBOOT_VERSION" = "hardkernel" ]; then
-  PKG_VERSION="83bf8f0"
-  PKG_SITE="https://github.com/hardkernel/u-boot"
-  PKG_URL="https://github.com/hardkernel/u-boot/archive/$PKG_VERSION.tar.gz"
-  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET gcc-linaro-aarch64-none-elf:host"
+  PKG_GIT_URL="https://github.com/SolidRun/u-boot-imx6.git"
+  PKG_GIT_BRANCH="imx6"
 elif [ "$UBOOT_VERSION" = "sunxi" ]; then
-  PKG_VERSION="2017.01"
+  PKG_VERSION="2016.11"
   PKG_SITE="http://www.denx.de/wiki/U-Boot/WebHome"
   PKG_URL="ftp://ftp.denx.de/pub/u-boot/$PKG_NAME-$PKG_VERSION.tar.bz2"
 else
@@ -45,9 +43,6 @@ PKG_SHORTDESC="u-boot: Universal Bootloader project"
 PKG_LONGDESC="Das U-Boot is a cross-platform bootloader for embedded systems, used as the default boot loader by several board vendors. It is intended to be easy to port and to debug, and runs on many supported architectures, including PPC, ARM, MIPS, x86, m68k, NIOS, and Microblaze."
 PKG_IS_ADDON="no"
 PKG_AUTORECONF="no"
-if [ "$UBOOT_VERSION" = "sunxi" ]; then
-  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET Python:host"
-fi
 
 pre_configure_target() {
   if [ -z "$UBOOT_CONFIG" ]; then
@@ -74,7 +69,6 @@ make_target() {
   done
 
   for UBOOT_TARGET in $UBOOT_CONFIG; do
-
     # rename files in case of multiple targets
     if [ $UBOOT_TARGET_CNT -gt 1 ]; then
       if [ "$UBOOT_TARGET" = "mx6_cubox-i_config" ]; then
@@ -107,11 +101,13 @@ make_target() {
         TARGET_NAME="undef"
       fi
     fi
+    
     if [ -f "$PROJECT_DIR/$PROJECT/logo/splash-$TARGET_NAME.bmp" ]; then
       LOGOIMG="$PROJECT_DIR/$PROJECT/logo/splash-$TARGET_NAME.bmp"
     elif [ -f "$PROJECT_DIR/$PROJECT/logo/splash.bmp" ]; then
       LOGOIMG="$PROJECT_DIR/$PROJECT/logo/splash.bmp"
     fi
+    
     make CROSS_COMPILE="$TARGET_PREFIX" ARCH="$TARGET_ARCH" mrproper
     make CROSS_COMPILE="$TARGET_PREFIX" ARCH="$TARGET_ARCH" $UBOOT_TARGET
     make CROSS_COMPILE="$TARGET_PREFIX" ARCH="$TARGET_ARCH" HOSTCC="$HOST_CC" HOSTSTRIP="true" LOGO_BMP="$LOGOIMG"
@@ -122,6 +118,7 @@ make_target() {
       [ -f u-boot-sunxi-with-spl.bin ] && mv u-boot-sunxi-with-spl.bin uboot-sunxi-$TARGET_NAME.bin || :
       [ -f SPL ] && mv SPL SPL-$TARGET_NAME || :
     fi
+    
     [ -f u-boot-sunxi-with-spl.bin ] && mv u-boot-sunxi-with-spl.bin uboot-sunxi-bpim3.bin || :
   done
 }
@@ -148,26 +145,19 @@ makeinstall_target() {
 
   mkdir -p $INSTALL/usr/share/bootloader
 
-  cp $ROOT/$PKG_BUILD/u-boot*.imx $INSTALL/usr/share/bootloader 2>/dev/null || :
+  cp ./u-boot*.imx $INSTALL/usr/share/bootloader 2>/dev/null || :
   #NOTE: sunxi u-boot build folder contains intermediate .img files which are not needed
   if [ -f ./uboot-sunxi-opi2.bin -o -f ./uboot-sunxi-bpim3.bin ]; then
     cp ./uboot-sunxi-*.bin $INSTALL/usr/share/bootloader 2>/dev/null
   else
-    cp $ROOT/$PKG_BUILD/u-boot*.img $INSTALL/usr/share/bootloader 2>/dev/null || :
+    cp ./u-boot*.img $INSTALL/usr/share/bootloader 2>/dev/null || :
   fi
-  cp $ROOT/$PKG_BUILD/SPL* $INSTALL/usr/share/bootloader 2>/dev/null || :
+  cp ./SPL* $INSTALL/usr/share/bootloader 2>/dev/null || :
 
-  cp $ROOT/$PKG_BUILD/$UBOOT_CONFIGFILE $INSTALL/usr/share/bootloader 2>/dev/null || :
+  cp ./$UBOOT_CONFIGFILE $INSTALL/usr/share/bootloader 2>/dev/null || :
+
+  cp -PRv $PKG_DIR/scripts/update.sh $INSTALL/usr/share/bootloader
 
   cp -PR $PROJECT_DIR/$PROJECT/bootloader/uEnv*.txt $INSTALL/usr/share/bootloader 2>/dev/null || :
-  case $PROJECT in
-    Odroid_C2)
-      cp -PRv $PKG_DIR/scripts/update-c2.sh $INSTALL/usr/share/bootloader/update.sh
-      cp -PRv $ROOT/$PKG_BUILD/sd_fuse/bl1.bin.hardkernel $INSTALL/usr/share/bootloader/bl1
-      cp -PRv $ROOT/$PKG_BUILD/sd_fuse/u-boot.bin $INSTALL/usr/share/bootloader/u-boot
-      ;;
-    *)
-      cp -PRv $PKG_DIR/scripts/update.sh $INSTALL/usr/share/bootloader
-      ;;
-  esac
 }
+
